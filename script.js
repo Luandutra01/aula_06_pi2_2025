@@ -1,37 +1,51 @@
-const API_URL = 'http://localhost:3000/alunos'; //verificar se está correto
+const API_URL = 'http://localhost:3000/alunos';
 
-//Selecionar os elementos do frontend
 const alunosList = document.getElementById("alunos-list");
 const form = document.getElementById("aluno-form");
 const nomeInput = document.getElementById("nome");
 const idadeInput = document.getElementById("idade");
 const cursoInput = document.getElementById("curso");
-//Funções
-//Função para criar um novo registro
+
+let editandoId = null; // Controla se está editando ou criando
+
+// Função para criar ou atualizar
 form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const novoAluno = {
+    const alunoData = {
         nome: nomeInput.value,
         idade: parseInt(idadeInput.value),
         curso: cursoInput.value,
+    };
+
+    if (editandoId) {
+        // Atualizar aluno existente
+        await fetch(`${API_URL}/${editandoId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(alunoData),
+        });
+        editandoId = null;
+        form.querySelector("button[type='submit']").textContent = "Cadastrar";
+    } else {
+        // Criar novo aluno
+        await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(alunoData),
+        });
     }
 
-    await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(novoAluno),
-    });
-
+    // Limpa o formulário
     nomeInput.value = "";
     idadeInput.value = "";
     cursoInput.value = "";
     carregarAlunos();
 });
 
-//Função para listar os registros já criados
+// Função para carregar alunos
 async function carregarAlunos() {
-    const res = await fetch(API_URL); //Extender a sintaxe do fetch api
+    const res = await fetch(API_URL);
     const alunos = await res.json();
 
     alunosList.innerHTML = "";
@@ -41,6 +55,7 @@ async function carregarAlunos() {
         li.innerHTML = `
         <span>${aluno.nome} (${aluno.idade} anos) <br><span class='curso'>${aluno.curso}</span></span>
         <div class="actions">
+            <button onclick="editarAluno('${aluno._id}')">Editar</button>
             <button onclick="deletarAluno('${aluno._id}')">Excluir</button>
         </div>
         `;
@@ -48,25 +63,27 @@ async function carregarAlunos() {
     });
 }
 
+// Função para editar
+async function editarAluno(id) {
+    const res = await fetch(`${API_URL}/${id}`);
+    const aluno = await res.json();
 
-//Função para apagar um registro
-async function deletarAluno(id) {
-    // console.log(id);
-    let text = "Deseja realmente apagar o registro?\nOK or Cancel.";
-
-    if (confirm(text) == true) {
-        await fetch(`${API_URL}/${id}`,
-            {
-                method: "DELETE"
-            }
-        );
-        carregarAlunos();
-    } else {
-
-    }
-
+    nomeInput.value = aluno.nome;
+    idadeInput.value = aluno.idade;
+    cursoInput.value = aluno.curso;
+    editandoId = id;
+    form.querySelector("button[type='submit']").textContent = "Atualizar";
 }
-//Função para atualizar um registro
 
-//Chamar a função para listar os alunos
+// Função para deletar
+async function deletarAluno(id) {
+    if (confirm("Deseja realmente apagar o registro?")) {
+        await fetch(`${API_URL}/${id}`, {
+            method: "DELETE"
+        });
+        carregarAlunos();
+    }
+}
+
+// Inicialização
 carregarAlunos();
